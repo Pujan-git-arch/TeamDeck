@@ -1,3 +1,10 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.task import Task
+    from app.models.attachment import Attachment
+
 import uuid
 
 from sqlalchemy import ForeignKey
@@ -5,9 +12,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from backend.app.models.attachment import Attachment
-from backend.app.models.task import Task
-from backend.app.models.attachment import Attachment
 
 
 class TaskAttachment(Base):
@@ -27,12 +31,12 @@ class TaskAttachment(Base):
         nullable=False,
     )
 
-    task: Mapped["Task"] = relationship(
+    task: Mapped[Task] = relationship(
         "Task",
         foreign_keys=[task_id],
     )
 
-    attachment: Mapped["Attachment"] = relationship(
+    attachment: Mapped[Attachment] = relationship(
         "Attachment",
         foreign_keys=[attachment_id],
     )

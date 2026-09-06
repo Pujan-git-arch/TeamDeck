@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.project import Project
+
+
 import uuid
 from datetime import datetime
 
@@ -7,8 +15,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import task_status_enum, task_priority_enum
-from backend.app.models.user import User
-from backend.app.models.project import Project
 
 
 class Task(Base):
@@ -24,14 +30,14 @@ class Task(Base):
         UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,  # idx_tasks_project_id
+        index=True,
     )
 
     assignee_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        index=True,  # idx_tasks_assignee
+        index=True,
     )
 
     created_by_id: Mapped[uuid.UUID] = mapped_column(
@@ -80,24 +86,25 @@ class Task(Base):
         nullable=False,
     )
 
-    project: Mapped["Project"] = relationship(
+    project: Mapped[Project] = relationship(
         "Project",
         foreign_keys=[project_id],
     )
 
-    assignee: Mapped["User | None"] = relationship(
+    assignee: Mapped[User | None] = relationship(
         "User",
         foreign_keys=[assignee_id],
     )
 
-    created_by: Mapped["User"] = relationship(
+    creator: Mapped[User] = relationship(
         "User",
         foreign_keys=[created_by_id],
     )
 
     __table_args__ = (
-        # Composite index: Kanban board filters by project_id, and often
-        # project_id + status together. Column order matters — project_id
-        # first supports both query patterns; status alone would not.
-        Index("idx_tasks_project_status", "project_id", "status"),
+        Index(
+            "idx_tasks_project_status",
+            "project_id",
+            "status",
+        ),
     )

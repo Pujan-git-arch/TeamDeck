@@ -1,3 +1,10 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.attachment import Attachment
+
 import uuid
 from datetime import datetime
 
@@ -6,8 +13,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from backend.app.models.attachment import Attachment
-from backend.app.models.user import User
 
 
 class Project(Base):
@@ -23,7 +28,7 @@ class Project(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,  # idx_projects_owner
+        index=True,
     )
 
     name: Mapped[str] = mapped_column(
@@ -36,7 +41,6 @@ class Project(Base):
         nullable=True,
     )
 
-    # Deferred FK — same circular-dependency pattern as User.avatar_attachment_id
     cover_attachment_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey(
@@ -67,12 +71,12 @@ class Project(Base):
         nullable=False,
     )
 
-    owner: Mapped["User"] = relationship(
+    owner: Mapped[User] = relationship(
         "User",
         foreign_keys=[owner_id],
     )
 
-    cover: Mapped["Attachment | None"] = relationship(
+    cover: Mapped[Attachment | None] = relationship(
         "Attachment",
         foreign_keys=[cover_attachment_id],
     )

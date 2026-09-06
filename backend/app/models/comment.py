@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.task import Task
+
+
 import uuid
 from datetime import datetime
 
@@ -6,8 +14,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from backend.app.models.user import User
-from backend.app.models.task import Task
 
 
 class Comment(Base):
@@ -49,18 +55,20 @@ class Comment(Base):
         nullable=False,
     )
 
-    task: Mapped["Task"] = relationship(
+    task: Mapped[Task] = relationship(
         "Task",
         foreign_keys=[task_id],
     )
 
-    author: Mapped["User"] = relationship(
+    author: Mapped[User] = relationship(
         "User",
         foreign_keys=[author_id],
     )
 
     __table_args__ = (
-        # Composite index, pre-sorted oldest-first — a comment thread reads
-        # top to bottom, so this avoids a separate sort step.
-        Index("idx_comments_task_id", "task_id", "created_at"),
+        Index(
+            "idx_comments_task_id",
+            "task_id",
+            "created_at",
+        ),
     )

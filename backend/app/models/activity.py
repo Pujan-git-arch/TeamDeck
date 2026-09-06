@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.project import Project
+
+
 import uuid
 from datetime import datetime
 
@@ -6,8 +14,6 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from backend.app.models.user import User
-from backend.app.models.project import Project
 
 
 class Activity(Base):
@@ -46,9 +52,6 @@ class Activity(Base):
         nullable=False,
     )
 
-    # Renamed from `metadata` — that name is reserved by SQLAlchemy's
-    # Declarative API (Base.metadata). DB column name is kept as "metadata"
-    # via the first positional arg to mapped_column.
     extra_data: Mapped[dict] = mapped_column(
         "metadata",
         JSONB,
@@ -62,17 +65,20 @@ class Activity(Base):
         nullable=False,
     )
 
-    project: Mapped["Project | None"] = relationship(
+    project: Mapped[Project | None] = relationship(
         "Project",
         foreign_keys=[project_id],
     )
 
-    actor: Mapped["User"] = relationship(
+    actor: Mapped[User] = relationship(
         "User",
         foreign_keys=[actor_id],
     )
 
     __table_args__ = (
-        # Activity feed: newest events first, per project.
-        Index("idx_activity_project_id", "project_id", text("created_at DESC")),
+        Index(
+            "idx_activity_project_id",
+            "project_id",
+            text("created_at DESC"),
+        ),
     )

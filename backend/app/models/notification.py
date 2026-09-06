@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+
 import uuid
 from datetime import datetime
 
@@ -6,7 +12,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from backend.app.models.user import User
 
 
 class Notification(Base):
@@ -55,12 +60,15 @@ class Notification(Base):
         nullable=False,
     )
 
-    recipient: Mapped["User"] = relationship(
+    recipient: Mapped[User] = relationship(
         "User",
         foreign_keys=[recipient_id],
     )
 
     __table_args__ = (
-        # Notification bell: fetch a user's notifications, unread ones first.
-        Index("idx_notifications_recipient", "recipient_id", "read_at"),
+        Index(
+            "idx_notifications_recipient",
+            "recipient_id",
+            "read_at",
+        ),
     )

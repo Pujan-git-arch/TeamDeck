@@ -1,16 +1,22 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.project import Project
+    from app.models.task import Task
+    from app.models.comment import Comment
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import attachment_kind_enum
-from backend.app.models.user import User
-from backend.app.models.project import Project
-from backend.app.models.task import Task
-from backend.app.models.comment import Comment
+
 
 class Attachment(Base):
     __tablename__ = "attachments"
@@ -61,7 +67,6 @@ class Attachment(Base):
     )
 
     size_bytes: Mapped[int] = mapped_column(
-        BigInteger,
         nullable=False,
     )
 
@@ -76,22 +81,29 @@ class Attachment(Base):
         nullable=False,
     )
 
-    uploader: Mapped["User"] = relationship(
+    uploader: Mapped[User] = relationship(
         "User",
         foreign_keys=[uploader_id],
     )
 
-    project: Mapped["Project | None"] = relationship(
+    project: Mapped[Project | None] = relationship(
         "Project",
         foreign_keys=[project_id],
     )
 
-    task: Mapped["Task | None"] = relationship(
+    task: Mapped[Task | None] = relationship(
         "Task",
         foreign_keys=[task_id],
     )
 
-    comment: Mapped["Comment | None"] = relationship(
+    comment: Mapped[Comment | None] = relationship(
         "Comment",
         foreign_keys=[comment_id],
+    )
+
+    __table_args__ = (
+        Index("idx_attachments_uploader", "uploader_id"),
+        Index("idx_attachments_project", "project_id"),
+        Index("idx_attachments_task", "task_id"),
+        Index("idx_attachments_comment", "comment_id"),
     )

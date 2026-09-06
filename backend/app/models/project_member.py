@@ -7,8 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import user_role_enum
-from backend.app.models.user import User
-from backend.app.models.project import Project
+from app.models.user import User
+from app.models.project import Project
 
 
 class ProjectMember(Base):
