@@ -2,18 +2,14 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.db.session import engine
+from app.routers.auth import router as auth_router
+from app.routers.users import router as users_router
+
 
 app = FastAPI(title="TeamDeck API")
 
 
-@app.get("/")
-def root():
-    return {"message": "TeamDeck API is running"}
 
-@app.get("/db-test")
-def db_test():
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT 1"))
-        return {
-            "database": result.scalar()
-        }
+        
+app.include_router(auth_router)
+app.include_router(users_router)

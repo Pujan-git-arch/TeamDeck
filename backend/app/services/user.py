@@ -95,3 +95,4 @@ class UserService:
         user = self.get_user(user_id)
 
         self.user_repository.delete(user)
+        
