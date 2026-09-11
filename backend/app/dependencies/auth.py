@@ -75,5 +75,15 @@ def require_super_admin(
             )
             
     return current_user
+
+def require_manager(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role != "manager":     # adjust to your model
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers can perform this action",
+        )
+    return current_user
     
         

@@ -70,3 +70,6 @@ class ProjectService:
         project = self.get_project(project_id)
 
         self.project_repository.delete(project)
+        
+    def get_user_accessible_projects(self, user_id: UUID) -> list[Project]:
+        return self.project_repository.get_by_member_or_owner(user_id)

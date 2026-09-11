@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 
 
 class ProjectRepository:
@@ -36,3 +37,20 @@ class ProjectRepository:
     def delete(self, project: Project) -> None:
         self.db.delete(project)
         self.db.flush()
+        
+    def get_by_member_or_owner(self, user_id: UUID) -> list[Project]:
+        statement = (
+            select(Project)
+            .outerjoin(
+                ProjectMember,
+                ProjectMember.project_id == Project.id,
+            )
+            .where(
+                or_(
+                    Project.owner_id == user_id,
+                    ProjectMember.user_id == user_id,
+                )
+            )
+            .distinct()
+        )
+        return list(self.db.scalars(statement).all())
