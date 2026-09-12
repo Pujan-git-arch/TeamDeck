@@ -58,8 +58,8 @@ class ProjectService:
         if project_data.description is not None:
             project.description = project_data.description
 
-        if project_data.status is not None:
-            project.status = project_data.status
+        if project_data.is_archived is not None:
+            project.is_archived = project_data.is_archived
 
         return self.project_repository.update(project)
 

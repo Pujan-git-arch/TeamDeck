@@ -8,6 +8,17 @@ from app.dependencies.auth import (
 from app.dependencies.project import (
     require_project_access,
     require_project_manager,
+    require_project_creator,
+)
+
+from app.dependencies.task import (
+    require_task_access,
+    require_task_creator,
+)
+
+from app.dependencies.comment import (
+    require_comment_access,
+    require_comment_author,
 )
 
 
@@ -18,4 +29,9 @@ __all__ = [
     "require_manager",
     "require_project_access",
     "require_project_manager",
+    "require_project_creator",
+    "require_task_access",
+    "require_task_creator",
+    "require_comment_access",
+    "require_comment_author",
 ]

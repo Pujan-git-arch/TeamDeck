@@ -10,6 +10,7 @@ from app.dependencies import (
     get_current_user,
     require_project_access,
     require_project_manager,
+    require_project_creator,
 )
 from app.models.user import User
 from app.schemas.project import (
@@ -38,7 +39,7 @@ router = APIRouter(
 def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_manager),
+    current_user: User = Depends(require_project_creator),
 ):
     service = ProjectService(db)
 
@@ -86,7 +87,7 @@ def get_my_projects(
 )
 def get_my_owned_projects(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_manager),
+    current_user: User = Depends(get_current_user),
 ):
     service = ProjectService(db)
 

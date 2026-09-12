@@ -40,7 +40,7 @@ def get_users(
 ):
     service = UserService(db)
     
-    return service.get_users()
+    return service.get_all_users()
 
 
 @router.get(

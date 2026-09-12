@@ -20,6 +20,7 @@ from app.schemas.user import (
     UserLogin,
     UserResponse,
     UserUpdate,
+    TokenResponse
 )
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "PasswordChange",
     "UserApproval",
     "UserResponse",
+    "TokenResponse",
     "ProjectCreate",
     "ProjectUpdate",
     "ProjectResponse",

@@ -24,7 +24,7 @@ class ProjectUpdate(BaseModel):
     )
 
     description: str | None = None
-    status: str | None = None
+    is_archived: bool | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -33,7 +33,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str | None
     cover_attachment_id: UUID | None
-    status: str
+    is_archived:bool
     created_at: datetime
 
     model_config = {

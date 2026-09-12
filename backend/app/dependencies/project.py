@@ -23,7 +23,23 @@ def require_project_access(
     }:
         return current_user
 
-    # Check whether the user is a member of this project
+    project_repository = ProjectRepository(db)
+
+    project = project_repository.get_by_id(
+        project_id
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Project owner always has access
+    if project.owner_id == current_user.id:
+        return current_user
+
+    # Check project membership
     member_repository = ProjectMemberRepository(db)
 
     member = member_repository.get(
@@ -38,7 +54,6 @@ def require_project_access(
         )
 
     return current_user
-
 
 def require_project_manager(
     project_id: UUID,
@@ -78,6 +93,23 @@ def require_project_manager(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not the manager of this project",
+        )
+
+    return current_user
+
+
+def require_project_creator(
+    current_user: User = Depends(get_current_user),
+) -> User:
+
+    if current_user.role not in {
+        "super_admin",
+        "admin",
+        "manager",
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to create projects",
         )
 
     return current_user
