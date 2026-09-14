@@ -53,6 +53,7 @@ This document describes the service classes in `backend/app/services/`. Services
 | `get_project(project_id)` | `Project` | Return a project or raise `ValueError` when it does not exist. |
 | `get_user_projects(owner_id)` | `list[Project]` | Return projects owned by a user. |
 | `get_all_projects()` | `list[Project]` | Return all projects. |
+| `get_user_accessible_projects(user_id)` | `list[Project]` | Return projects the user owns or is a member of. |
 | `update_project(project_id, project_data)` | `Project` | Update supplied project fields. |
 | `delete_project(project_id)` | `None` | Find and delete a project. |
 
@@ -539,6 +540,9 @@ class ProjectService:
         project = self.get_project(project_id)
 
         self.project_repository.delete(project)
+        
+    def get_user_accessible_projects(self, user_id: UUID) -> list[Project]:
+        return self.project_repository.get_by_member_or_owner(user_id)
 ```
 
 ### `project_member.py`

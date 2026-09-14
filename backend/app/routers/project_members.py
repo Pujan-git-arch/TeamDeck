@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.dependencies import(
-    require_admin,
     require_project_access,
+    require_project_manager,
     require_manager,
 )
 from app.models.user import User
@@ -46,7 +46,7 @@ def add_project_member(
     project_id:UUID,
     member_data: ProjectMemberCreate,
     db:Session =Depends(get_db),
-    current_user:User = Depends(require_manager),
+    current_user:User = Depends(require_project_manager),
 ):
     service = ProjectMemberService(db)
     
@@ -78,7 +78,7 @@ def update_project_member(
     user_id: UUID,
     member_data: ProjectMemberUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_manager),
+    current_user: User = Depends(require_project_manager),
 ):
     service = ProjectMemberService(db)
     
@@ -111,7 +111,7 @@ def remove_project_member(
     project_id: UUID,
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_manager),
+    current_user: User = Depends(require_project_manager),
 ):
     service = ProjectMemberService(db)
 

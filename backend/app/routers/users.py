@@ -138,8 +138,8 @@ def approve_user(
     try:
         user = service.approve_or_reject_user(
             user_id,
-            approval_data,
             current_user.id,
+            approval_data,
         )
 
         db.commit()

@@ -46,6 +46,7 @@ This document describes the SQLAlchemy repository classes in `backend/app/reposi
 | `get_by_id(project_id)` | `Project | None` | Find one project by primary key. |
 | `get_by_owner(owner_id)` | `list[Project]` | Return projects owned by a user. |
 | `get_all()` | `list[Project]` | Return all projects. |
+| `get_by_member_or_owner(user_id)` | `list[Project]` | Return projects owned by the user or containing the user as a member. |
 | `create(project)` | `Project` | Persist and refresh a new project. |
 | `update(project)` | `Project` | Flush and refresh an existing project. |
 | `delete(project)` | `None` | Mark a project for deletion and flush. |
@@ -417,6 +418,23 @@ class ProjectRepository:
     def delete(self, project: Project) -> None:
         self.db.delete(project)
         self.db.flush()
+        
+    def get_by_member_or_owner(self, user_id: UUID) -> list[Project]:
+        statement = (
+            select(Project)
+            .outerjoin(
+                ProjectMember,
+                ProjectMember.project_id == Project.id,
+            )
+            .where(
+                or_(
+                    Project.owner_id == user_id,
+                    ProjectMember.user_id == user_id,
+                )
+            )
+            .distinct()
+        )
+        return list(self.db.scalars(statement).all())
 ```
 
 ### `project_member.py`

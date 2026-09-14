@@ -127,9 +127,14 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=2, max_length=200)
+    name: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=200,
+    )
+
     description: str | None = None
-    status: str | None = None
+    is_archived: bool | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -138,7 +143,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str | None
     cover_attachment_id: UUID | None
-    status: str
+    is_archived: bool
     created_at: datetime
 
     model_config = {

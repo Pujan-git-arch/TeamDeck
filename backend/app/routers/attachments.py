@@ -1,3 +1,4 @@
+import uuid
 from uuid import UUID
 
 from fastapi import (
@@ -9,6 +10,8 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
+
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -30,6 +33,64 @@ router = APIRouter(
 )
 
 
+@router.get("/{attachment_id}/file")
+def get_attachment_file(
+    attachment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = AttachmentService(db)
+
+    try:
+        attachment = service.get_attachment(attachment_id)
+
+        if attachment.kind == "project_cover":
+            if attachment.project_id:
+                require_project_access(
+                    project_id=attachment.project_id,
+                    db=db,
+                    current_user=current_user,
+                )
+
+        elif attachment.kind == "task_attachment":
+            if attachment.task_id:
+                require_task_access(
+                    task_id=attachment.task_id,
+                    db=db,
+                    current_user=current_user,
+                )
+
+        elif attachment.kind == "comment_attachment":
+            if attachment.comment_id:
+                require_comment_access(
+                    comment_id=attachment.comment_id,
+                    db=db,
+                    current_user=current_user,
+                )
+
+        elif attachment.kind == "avatar":
+            if (
+                attachment.uploader_id != current_user.id
+                and current_user.role not in {"admin", "super_admin"}
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You do not have permission to access this file",
+                )
+
+        file_path = service.get_file_path(attachment_id)
+
+        return FileResponse(
+            path=file_path,
+            media_type=attachment.mime_type,
+            filename=attachment.original_name,
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        )
 @router.get(
     "/{attachment_id}",
     response_model=AttachmentResponse,
@@ -49,6 +110,8 @@ def get_attachment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         )
+
+
 
 
 @router.get(
@@ -147,8 +210,14 @@ def upload_attachment(
         import uuid as uuid_lib
 
         stored_name = f"{uuid_lib.uuid4()}_{file.filename}"
-        file_content = file.file.read()
-        size_bytes = len(file_content)
+        
+        file.file.seek(0)
+        
+        file_path = service.file_storage.save_file(
+            file,
+            stored_name,
+        )
+        size_bytes = file_path.stat().st_size
 
         attachment = Attachment(
             uploader_id=current_user.id,
