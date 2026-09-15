@@ -12,7 +12,7 @@ class ActivityResponse(BaseModel):
     action: str = Field(max_length=100)
     entity_type: str = Field(max_length=50)
     entity_id: UUID
-    metadata: dict[str, Any]
+    extra_data: dict[str, Any]
     created_at: datetime
 
     model_config = {

@@ -78,7 +78,8 @@ def update_user(
     try:
         user= service.update_user(
             user_id,
-            user_data,    
+            user_data,  
+            current_user,  
         )
         
         db.commit()

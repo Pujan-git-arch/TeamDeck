@@ -3,7 +3,11 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
+from app.models.project_member import ProjectMember
+from app.models.activity import Activity
+from app.services.activity import ActivityService
 from app.repositories.project import ProjectRepository
+from app.repositories.project_member import ProjectMemberRepository
 from app.schemas.project import ProjectCreate, ProjectUpdate
 
 
@@ -11,6 +15,8 @@ class ProjectService:
     def __init__(self, db: Session):
         self.db = db
         self.project_repository = ProjectRepository(db)
+        self.project_member_repository = ProjectMemberRepository(db)
+        self.activity_Service = ActivityService(db)
 
     def create_project(
         self,
@@ -22,8 +28,32 @@ class ProjectService:
             name=project_data.name,
             description=project_data.description,
         )
+        
+        project = self.project_repository.create(project)
+        
+        manager_member = ProjectMember(
+            project_id = project.id,
+            user_id=owner_id,
+            role="manager",
+        )
 
-        return self.project_repository.create(project)
+        self.project_member_repository.create(manager_member)
+        
+        activity = Activity(
+            project_id=project.id,
+            actor_id=owner_id,
+            action="project_created",
+            entity_type="project",
+            entity_id=project.id,
+            extra_data={
+                "project_name": project.name,
+            },
+        )
+
+        self.activity_Service.create_activity(activity)
+        
+        return project
+    
 
     def get_project(
         self,

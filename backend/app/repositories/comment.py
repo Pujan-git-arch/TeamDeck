@@ -20,7 +20,7 @@ class CommentRepository:
     def get_task_comments(self, task_id: UUID) -> list[Comment]:
         statement = select(Comment).where(
             Comment.task_id == task_id
-        )
+        ).order_by(Comment.created_at.asc())
 
         return list(self.db.scalars(statement).all())
 

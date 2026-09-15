@@ -1,122 +1,49 @@
-# Architecture Overview
+# Actual Project Architecture
 
-This document explains the current backend architecture for TeamDeck and how the major layers fit together.
+## Repository layout
 
-## High-Level Structure
+The repository has a Vite/React frontend under `frontend/` and a FastAPI backend under `backend/`. The frontend source is organized into app providers/router/store, feature folders, reusable components, pages, hooks, and API/WebSocket service helpers. The backend is the implemented HTTP surface documented in `docs/api.md`.
 
-The backend follows a typical layered FastAPI pattern:
+## Bootstrap and request lifecycle
 
-- `app/main.py` bootstraps the FastAPI application and registers routers.
-- `app/routers/` contains HTTP route handlers.
-- `app/dependencies/` contains shared auth and authorization checks.
-- `app/services/` contains business logic and validation rules.
-- `app/repositories/` contains SQLAlchemy queries and persistence logic.
-- `app/models/` defines the database schema as SQLAlchemy models.
-- `app/schemas/` defines request and response contracts with Pydantic.
-- `app/db/` configures the database engine and session dependency.
+`backend/app/main.py` creates `FastAPI(title="TeamDeck API")` and includes authentication, user, project, member, task, comment, notification, activity, and attachment routers. The attachment feature is mounted through both generic routes and the project/task/comment-scoped routers. There is no global API prefix.
 
-## Request Flow
+For a request, FastAPI first resolves the route and its dependencies. The route dependencies can load the database session, authenticate the bearer token, and enforce role or resource access. The route then constructs a feature service. Services apply business rules and call repositories, which query or mutate SQLAlchemy models through the current session. Mutating routes generally commit after successful service work and roll back when they catch a service `ValueError`. Response models in `schemas/` serialize ORM objects through `from_attributes`.
 
-A typical request moves through the stack like this:
+## Authentication and authorization
 
-1. FastAPI receives the HTTP request.
-2. The matching router function runs.
-3. Dependencies such as `get_current_user()` or `require_project_access()` validate authentication and permissions.
-4. The route calls a service class.
-5. The service uses a repository object to query or persist data.
-6. The repository interacts with the SQLAlchemy `Session` and model layer.
-7. The route commits or rolls back the transaction, then returns a response.
+`core/security.py` creates and decodes JWTs and hashes/verifies passwords. `dependencies/auth.py` uses `OAuth2PasswordBearer(tokenUrl="/auth/login")`; the token subject is interpreted as a user UUID. `get_current_user` rejects invalid tokens, unknown users, and inactive accounts. `require_admin`, `require_super_admin`, and `require_manager` add role checks.
 
-## Main Layers
+The project, task, and comment dependency modules add resource checks. Project access is granted to admins, the owner, or a project member. Task access resolves the task and then checks its project. Comment access resolves the comment and task before checking the project. Modification dependencies additionally allow the relevant author/creator/owner or administrators. These dependencies are the main authorization boundary; services still enforce business invariants such as duplicate membership and valid task assignees.
 
-### Router Layer
+## Services and repositories
 
-The router layer is located in `backend/app/routers/` and exposes endpoints grouped by feature.
+Services in `backend/app/services/` coordinate models, repositories, and side effects. Authentication owns registration/login orchestration. User, project, member, task, comment, notification, attachment, task-attachment, activity, and file-storage services each cover their corresponding feature.
 
-Examples:
+Repositories in `backend/app/repositories/` encapsulate SQLAlchemy reads and writes for users, projects, members, tasks, comments, attachments, task attachments, notifications, and activities. They add, flush, refresh, query, or delete; transaction boundaries are controlled by the route/session flow rather than by a repository-wide commit policy.
 
-- `auth.py` for login and registration
-- `users.py` for account and admin management
-- `projects.py` for project lifecycle routes
-- `project_members.py` for membership assignment
-- `tasks.py` for project-scoped and task-scoped task operations
-- `comments.py` for task-scoped and comment-scoped comment operations
-- `notifications.py` and `activities.py` for user/project activity flows
-- `task_attachments.py` for multiple attachment-scoped listing/upload/delete routers
+## Models and schemas
 
-### Dependency Layer
+`backend/app/models/` contains the ORM entities for users, projects, memberships, tasks, comments, attachments, task attachments, notifications, activities, and enums. `backend/app/schemas/` contains request models such as `UserCreate`, `ProjectCreate`, `TaskCreate`, `CommentCreate`, and update variants, plus response models such as `UserResponse`, `ProjectResponse`, `TaskResponse`, `CommentResponse`, `AttachmentResponse`, `NotificationResponse`, and `ActivityResponse`. Activities and notifications have response schemas but no user-facing create schema because services generate them.
 
-The dependency layer centralizes permission checks.
+## Database, sessions, and migrations
 
-Current dependencies include:
+`db/base.py` provides the declarative base. `db/session.py` creates the SQLAlchemy engine from `settings.DATABASE_URL`, configures `SessionLocal` with `autocommit=False` and `autoflush=False`, and exposes `get_db()` as a yield dependency that closes the session in `finally`. `backend/alembic/` contains migration configuration and revisions. The application itself does not commit from `get_db`; individual mutation routes commit after service calls.
 
-- `get_current_user()`
-- `require_admin()`
-- `require_super_admin()`
-- `require_manager()`
-- `require_project_access()`
-- `require_project_manager()`
-- `require_project_creator()`
+## Files and side effects
 
-This keeps route logic shorter and makes access rules reusable.
+Attachments use FastAPI `UploadFile` and `services/file_storage.py` for disk-backed storage under the configured `UPLOAD_DIR`. The attachment model stores metadata and a generated stored name; download routes return a `FileResponse` after checking access based on attachment kind.
 
-### Service Layer
+State-changing project, membership, task, and comment services create `Activity` records through `ActivityService`. Several also create user notifications through `NotificationService`, including member changes, task assignment/update, and comment events. These side effects share the request's SQLAlchemy session and are committed with the surrounding route operation.
 
-The service layer holds the application rules that are not database-specific.
+## Configuration
 
-Examples:
+`core/config.py` loads settings from `.env` (first from the working directory, then from the backend-relative fallback). Required settings are `DATABASE_URL`, `UPLOAD_DIR`, and `JWT_SECRET_KEY`. `JWT_ALGORITHM` defaults to `HS256`, and `ACCESS_TOKEN_EXPIRE_MINUTES` defaults to `30`. `requirements.txt` files define the Python dependencies; the frontend has its own `package.json` and Vite configuration.
 
-- `AuthService` handles registration and token generation.
-- `UserService` handles account updates, approvals, and password changes.
-- `ProjectService` handles project creation, update, listing, and ownership logic.
-- `ProjectMemberService` handles membership creation and role updates.
+## Known implementation caveats
 
-### Repository Layer
-
-Repositories handle database queries and persistence operations for each model.
-
-Examples:
-
-- `ProjectRepository` queries project records.
-- `ProjectMemberRepository` queries project membership records.
-- `UserRepository` queries users by email and ID.
-- `NotificationRepository` handles unread and recipient-based queries.
-
-### Model and Schema Layer
-
-- `models/` defines the database schema using SQLAlchemy.
-- `schemas/` defines the API contracts with Pydantic.
-- Database models and Pydantic models are intentionally kept separate so validation is independent from persistence.
-
-## Database and Session Configuration
-
-The database configuration is defined in:
-
-- `backend/app/core/config.py` for environment settings
-- `backend/app/db/session.py` for engine and session creation
-
-The app uses a single PostgreSQL connection string from environment configuration and creates a session per request through `get_db()`.
-
-## Current State of the Project
-
-The current backend is a working feature-oriented API with the following core flows already in place:
-
-- user authentication and registration
-- user approval management
-- project creation and ownership
-- project member assignment
-- project access control
-- task creation, listing, assignment, update, and deletion
-- comment creation, listing, update, and deletion
-- notifications
-- activities
-- attachments and project/task/comment attachment listings
-
-The task and comment modules are active and mounted through multiple scoped routers rather than a single flat router file. The attachment module similarly exposes several scoped router instances for project, task, and comment attachment listing.
-
-## Architectural Notes
-
-- The system is organized around domain features rather than a strict hexagonal architecture.
-- Permission checks are centralized in dependencies instead of being duplicated across routes.
-- Repositories are thin and strongly tied to the SQLAlchemy model layer.
-- The service layer sits in the middle, coordinating model creation and validation before persistence.
+- The router set has no activity creation endpoint; activities are read-only over HTTP and are generated as side effects.
+- Static routes such as `/users/me`, `/projects/owned`, `/projects/all`, `/tasks/assigned`, and `/notifications/unread` are declared before dynamic UUID routes and must remain ordered that way for unambiguous matching.
+- The source uses both route-level `db.commit()`/`db.rollback()` and service-created side effects, so partial work is expected to be governed by the route's exception path and session transaction.
+- Some route modules use inconsistent local names and formatting, but the mounted router objects and decorators define the actual public API.
+- The frontend directory is a separate Vite/React application; this backend architecture document does not assume that every frontend feature is currently connected to every API route.

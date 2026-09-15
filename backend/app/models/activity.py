@@ -17,7 +17,7 @@ from app.db.base import Base
 
 
 class Activity(Base):
-    __tablename__ = "activities"
+    __tablename__ = "activity"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

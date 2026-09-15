@@ -1,49 +1,53 @@
-# Dependency Layer
+# Dependency Files Reference
 
-This document describes the FastAPI dependency functions in `backend/app/dependencies/`. These dependencies centralize authentication, authorization, and project-level access checks. They are used by the routers to enforce permission rules before a service or database operation runs.
+This file contains the actual code for each dependency file under `backend/app/dependencies/`.
 
-## Conventions
+## File: `backend/app/dependencies/__init__.py`
 
-- Dependencies are defined as functions that receive request data through FastAPI `Depends(...)`.
-- Authentication dependencies read the JWT token, validate it, and load the current user from the database.
-- Authorization dependencies raise `HTTPException` with a `403` status when the current user is not allowed to proceed.
-- Project access dependencies check both the user role and the project relationship before allowing access to a project-scoped endpoint.
-- Dependency functions do not commit or mutate the database directly; they only validate access.
+```python
+from app.dependencies.auth import (
+    get_current_user,
+    require_admin,
+    require_super_admin,
+    require_manager,
+)
 
-## Dependency Overview
+from app.dependencies.project import (
+    require_project_access,
+    require_project_manager,
+    require_project_creator,
+)
 
-| Dependency | Source file | Purpose |
-| --- | --- | --- |
-| `get_current_user` | `auth.py` | Validate JWT token and return the authenticated user. |
-| `require_admin` | `auth.py` | Allow only `admin` or `super_admin` users. |
-| `require_super_admin` | `auth.py` | Allow only `super_admin` users. |
-| `require_manager` | `auth.py` | Allow only `manager` users. |
-| `require_project_access` | `project.py` | Allow access to a project if the user is admin, owner, or project member. |
-| `require_project_manager` | `project.py` | Allow project management only to owners with manager-level permission. |
-| `require_project_creator` | `project.py` | Allow project creation only to users with creator-capable roles. |
+from app.dependencies.task import (
+    require_task_access,
+    require_task_creator,
+    require_task_creator_for_project,
+)
 
-## Dependency Reference
+from app.dependencies.comment import (
+    require_comment_access,
+    require_comment_author,
+)
 
-### `auth.py`
 
-| Dependency | Result | Purpose |
-| --- | --- | --- |
-| `get_current_user(token, db)` | `User` | Decode the access token, validate the user, and ensure the account is active. |
-| `require_admin(current_user)` | `User` | Enforce admin-level access. |
-| `require_super_admin(current_user)` | `User` | Enforce super-admin-only access. |
-| `require_manager(current_user)` | `User` | Enforce manager-level access. |
+__all__ = [
+    "get_current_user",
+    "require_admin",
+    "require_super_admin",
+    "require_manager",
+    "require_project_access",
+    "require_project_manager",
+    "require_project_creator",
+    "require_task_access",
+    "require_task_creator",
+    "require_comment_access",
+    "require_comment_author",
+    "require_task_creator_for_project",
+]
+```
 
-### `project.py`
 
-| Dependency | Result | Purpose |
-| --- | --- | --- |
-| `require_project_access(project_id, db, current_user)` | `User` | Allow access if the user is admin, project owner, or project member. |
-| `require_project_manager(project_id, db, current_user)` | `User` | Allow project updates/deletes only for owner managers. |
-| `require_project_creator(current_user)` | `User` | Restrict project creation to admin, super_admin, and manager roles. |
-
-## Complete Source Code
-
-### `auth.py`
+## File: `backend/app/dependencies/auth.py`
 
 ```python
 from uuid import UUID
@@ -135,7 +139,8 @@ def require_manager(
     return current_user
 ```
 
-### `project.py`
+
+## File: `backend/app/dependencies/project.py`
 
 ```python
 from uuid import UUID
@@ -255,36 +260,193 @@ def require_project_creator(
     return current_user
 ```
 
-### `__init__.py`
+
+## File: `backend/app/dependencies/task.py`
 
 ```python
-from app.dependencies.auth import (
-    get_current_user,
-    require_admin,
-    require_super_admin,
-    require_manager,
-)
+from uuid import UUID
 
-from app.dependencies.project import (
-    require_project_access,
-    require_project_manager,
-    require_project_creator,
-)
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.dependencies.auth import get_current_user
+from app.dependencies.project import require_project_access
+from app.models.user import User
+from app.repositories.project import ProjectRepository
+from app.repositories.project_member import ProjectMemberRepository
+from app.repositories.task import TaskRepository
 
 
-__all__ = [
-    "get_current_user",
-    "require_admin",
-    "require_super_admin",
-    "require_manager",
-    "require_project_access",
-    "require_project_manager",
-    "require_project_creator",
-]
+def require_task_access(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    task = TaskRepository(db).get_by_id(task_id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    require_project_access(
+        project_id=task.project_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    return current_user
+
+
+def require_task_creator(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    task = TaskRepository(db).get_by_id(task_id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    if current_user.role in {"admin", "super_admin"}:
+        return current_user
+
+    if task.created_by_id == current_user.id:
+        return current_user
+
+    project = ProjectRepository(db).get_by_id(task.project_id)
+
+    if project and project.owner_id == current_user.id:
+        return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You do not have permission to modify this task",
+    )
+    
+def require_task_creator_for_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+
+    # Admins can create tasks in any project
+    if current_user.role in {"admin", "super_admin"}:
+        return current_user
+
+    # Find the user's membership in this project
+    project_member_repository = ProjectMemberRepository(db)
+
+    member = project_member_repository.get(
+        project_id=project_id,
+        user_id=current_user.id,
+    )
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a member of this project",
+        )
+
+    # Only the project manager can create tasks
+    if member.role != "manager":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project manager can create tasks",
+        )
+
+    return current_user
 ```
 
-## Notes
 
-- The current dependency layer is focused on authentication and project-level access control.
-- Project membership is enforced through the `project_members` table, but the access dependency does not currently inspect the member role beyond existence.
-- The dependency structure is centralized and easy to reuse across routers, which is the intended pattern for the backend.
+## File: `backend/app/dependencies/comment.py`
+
+```python
+from uuid import UUID
+
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.dependencies.auth import get_current_user
+from app.dependencies.project import require_project_access
+from app.models.user import User
+from app.repositories.comment import CommentRepository
+from app.repositories.project import ProjectRepository
+from app.repositories.task import TaskRepository
+
+
+def require_comment_access(
+    comment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+
+    comment = CommentRepository(db).get_by_id(comment_id)
+
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found",
+        )
+
+    task = TaskRepository(db).get_by_id(comment.task_id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    require_project_access(
+        project_id=task.project_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    return current_user
+
+
+def require_comment_author(
+    comment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+
+    comment = CommentRepository(db).get_by_id(comment_id)
+
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found",
+        )
+
+    # Admin and Super Admin can modify any comment
+    if current_user.role in {"admin", "super_admin"}:
+        return current_user
+
+    # Comment author can modify their own comment
+    if comment.author_id == current_user.id:
+        return current_user
+
+    # Project owner can modify comments in their project
+    task = TaskRepository(db).get_by_id(comment.task_id)
+
+    if task:
+        project = ProjectRepository(db).get_by_id(task.project_id)
+
+        if project and project.owner_id == current_user.id:
+            return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You do not have permission to modify this comment",
+    )
+```
+
+

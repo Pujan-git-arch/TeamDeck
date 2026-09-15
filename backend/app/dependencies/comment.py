@@ -17,6 +17,7 @@ def require_comment_access(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> User:
+
     comment = CommentRepository(db).get_by_id(comment_id)
 
     if not comment:
@@ -47,6 +48,7 @@ def require_comment_author(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> User:
+
     comment = CommentRepository(db).get_by_id(comment_id)
 
     if not comment:
@@ -55,12 +57,15 @@ def require_comment_author(
             detail="Comment not found",
         )
 
+    # Admin and Super Admin can modify any comment
     if current_user.role in {"admin", "super_admin"}:
         return current_user
 
+    # Comment author can modify their own comment
     if comment.author_id == current_user.id:
         return current_user
 
+    # Project owner can modify comments in their project
     task = TaskRepository(db).get_by_id(comment.task_id)
 
     if task:

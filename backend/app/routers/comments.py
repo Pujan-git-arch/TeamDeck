@@ -47,7 +47,7 @@ def create_comment(
     try:
         comment = service.create_comment(
             task_id=task_id,
-            author_id=current_user.id,
+            actor_id=current_user.id,
             comment_data=comment_data,
         )
 
@@ -127,6 +127,8 @@ def update_comment(
         comment = service.update_comment(
             comment_id=comment_id,
             comment_data=comment_data,
+            actor_id=current_user.id,
+            
         )
 
         db.commit()
@@ -158,7 +160,9 @@ def delete_comment(
     service = CommentService(db)
 
     try:
-        service.delete_comment(comment_id)
+        service.delete_comment(comment_id,
+                               current_user.id
+                               )
 
         db.commit()
 

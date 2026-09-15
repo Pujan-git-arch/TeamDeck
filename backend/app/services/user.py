@@ -9,6 +9,7 @@ from app.schemas.user import (
     UserApproval,
     UserUpdate,
 )
+from app.models.user import User
 
 
 class UserService:
@@ -31,6 +32,7 @@ class UserService:
         self,
         user_id: UUID,
         user_data: UserUpdate,
+        current_user: User,
     ):
         user = self.get_user(user_id)
 
@@ -46,6 +48,30 @@ class UserService:
                 raise ValueError("Email is already registered")
 
             user.email = user_data.email
+            
+        if user_data.role is not None:
+            allowed_roles ={
+                "admin",
+                "manager",
+                "developer",
+                "designer",
+                "hr",
+                "qa_tester",
+                "viewer"
+            }
+            
+            if user_data.role not in allowed_roles:
+                raise ValueError("Invalid user role")
+            
+            if user.role == "super_admin":
+                raise ValueError("Super admin role cannot be changed")
+            
+            if user_data.role == "super_admin":
+                if current_user.role != "super_admin":
+                    raise ValueError(
+                        "Only super admin can assign the super admin role"
+                    )
+            user.role = user_data.role
 
         return self.user_repository.update(user)
 

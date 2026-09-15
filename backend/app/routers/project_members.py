@@ -54,6 +54,7 @@ def add_project_member(
         member = service.add_member(
             project_id,
             member_data,
+            current_user.id,
         )
         
         db.commit()
@@ -87,6 +88,7 @@ def update_project_member(
             project_id,
             user_id,
             member_data,
+            current_user.id,
         )
 
         db.commit()
@@ -119,6 +121,7 @@ def remove_project_member(
         service.remove_member(
             project_id,
             user_id,
+            current_user.id,
         )
 
         db.commit()

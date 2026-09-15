@@ -8,6 +8,7 @@ from app.dependencies.auth import get_current_user
 from app.dependencies.project import require_project_access
 from app.models.user import User
 from app.repositories.project import ProjectRepository
+from app.repositories.project_member import ProjectMemberRepository
 from app.repositories.task import TaskRepository
 
 
@@ -61,3 +62,36 @@ def require_task_creator(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="You do not have permission to modify this task",
     )
+    
+def require_task_creator_for_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+
+    # Admins can create tasks in any project
+    if current_user.role in {"admin", "super_admin"}:
+        return current_user
+
+    # Find the user's membership in this project
+    project_member_repository = ProjectMemberRepository(db)
+
+    member = project_member_repository.get(
+        project_id=project_id,
+        user_id=current_user.id,
+    )
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a member of this project",
+        )
+
+    # Only the project manager can create tasks
+    if member.role != "manager":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project manager can create tasks",
+        )
+
+    return current_user

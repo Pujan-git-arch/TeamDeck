@@ -9,6 +9,7 @@ from app.dependencies import (
     require_project_access,
     require_task_access,
     require_task_creator,
+    require_task_creator_for_project,
 )
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
@@ -41,14 +42,14 @@ def create_task(
     project_id: UUID,
     task_data: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_project_access),
+    current_user: User = Depends(require_task_creator_for_project),
 ):
     service = TaskService(db)
 
     try:
         task = service.create_task(
             project_id=project_id,
-            created_by_id=current_user.id,
+            actor_id=current_user.id,
             task_data=task_data,
         )
 
@@ -146,6 +147,7 @@ def update_task(
         task = service.update_task(
             task_id=task_id,
             task_data=task_data,
+            actor_id=current_user.id,
         )
 
         db.commit()
@@ -177,7 +179,8 @@ def delete_task(
     service = TaskService(db)
 
     try:
-        service.delete_task(task_id)
+        service.delete_task(task_id,
+                            current_user.id)
 
         db.commit()
 

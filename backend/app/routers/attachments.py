@@ -183,23 +183,86 @@ def upload_attachment(
             detail=f"Invalid kind. Must be one of: {', '.join(valid_kinds)}",
         )
 
-    if kind == "task_attachment" and task_id:
+
+    # ---------------------------------------------------------
+    # AVATAR
+    # ---------------------------------------------------------
+
+    if kind == "avatar":
+        if project_id or task_id or comment_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Avatar attachments cannot belong to a project, task, or comment",
+            )
+
+
+    # ---------------------------------------------------------
+    # PROJECT COVER
+    # ---------------------------------------------------------
+
+    elif kind == "project_cover":
+        if not project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="project_id is required for project_cover attachments",
+            )
+
+        if task_id or comment_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Project cover attachments cannot belong to a task or comment",
+            )
+
+        require_project_access(
+            project_id=project_id,
+            db=db,
+            current_user=current_user,
+        )
+
+
+    # ---------------------------------------------------------
+    # TASK ATTACHMENT
+    # ---------------------------------------------------------
+
+    elif kind == "task_attachment":
+        if not task_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="task_id is required for task_attachment attachments",
+            )
+
+        if project_id or comment_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task attachments cannot directly belong to a project or comment",
+            )
+
         require_task_access(
             task_id=task_id,
             db=db,
             current_user=current_user,
         )
 
-    elif kind == "comment_attachment" and comment_id:
+
+    # ---------------------------------------------------------
+    # COMMENT ATTACHMENT
+    # ---------------------------------------------------------
+
+    elif kind == "comment_attachment":
+        if not comment_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="comment_id is required for comment_attachment attachments",
+            )
+
+        if project_id or task_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Comment attachments cannot belong to a project or task",
+            )
+
         require_comment_access(
             comment_id=comment_id,
-            db=db,
-            current_user=current_user,
-        )
-
-    elif kind == "project_cover" and project_id:
-        require_project_access(
-            project_id=project_id,
             db=db,
             current_user=current_user,
         )

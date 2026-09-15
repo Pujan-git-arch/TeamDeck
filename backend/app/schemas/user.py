@@ -36,6 +36,8 @@ class UserUpdate(BaseModel):
     )
     
     email: EmailStr | None = None
+    
+    role: str | None = None
 
 
 # ---------------------------------------------------------

@@ -26,6 +26,8 @@ class NotificationRepository:
     ) -> list[Notification]:
         statement = select(Notification).where(
             Notification.recipient_id == user_id
+        ).order_by(
+            Notification.created_at.desc()
         )
 
         return list(self.db.scalars(statement).all())
@@ -37,6 +39,8 @@ class NotificationRepository:
         statement = select(Notification).where(
             Notification.recipient_id == user_id,
             Notification.read_at.is_(None),
+        ).order_by(
+            Notification.created_at.desc()
         )
 
         return list(self.db.scalars(statement).all())

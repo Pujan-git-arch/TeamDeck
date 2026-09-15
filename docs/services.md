@@ -1,137 +1,8 @@
-# Service Layer
+﻿# services
 
-This document describes the service classes in `backend/app/services/`. Services contain application-level rules, construct and update model instances, validate business conditions, and delegate persistence to repositories. They receive an active SQLAlchemy `Session`; transaction commit and rollback remain the responsibility of the service or request boundary.
+Complete source catalog for backend/app/services.
 
-## Conventions
-
-- Each service is initialized with a SQLAlchemy `Session` and creates the corresponding repository.
-- Services raise `ValueError` for missing entities and business-rule violations.
-- Create and update operations use Pydantic request schemas where applicable.
-- Services do not commit transactions. Repository flushes make changes available within the current transaction.
-- Passwords are hashed before storage and verified before authentication or password changes.
-
-## Service Overview
-
-| Service | Model or concern | Main responsibilities |
-| --- | --- | --- |
-| `AuthService` | Authentication and `User` registration | Register users, authenticate credentials, and issue access tokens. |
-| `UserService` | `User` | Retrieve, list, update, approve/reject, change passwords, and delete users. |
-| `ProjectService` | `Project` | Create, retrieve, list, update, and delete projects. |
-| `ProjectMemberService` | `ProjectMember` | Retrieve memberships, add members, update roles, and remove members. |
-| `TaskService` | `Task` | Retrieve, list, create, update, and delete tasks. |
-| `CommentService` | `Comment` | Retrieve, list, create, update, and delete comments. |
-| `AttachmentService` | `Attachment` | Retrieve, list by owning entity, create, and delete attachments. |
-| `TaskAttachmentService` | `TaskAttachment` | Retrieve links, list task links, add links, and remove links. |
-| `NotificationService` | `Notification` | Retrieve, list, mark as read, and delete notifications. |
-| `ActivityService` | `Activity` | Retrieve, list by project, and create activity records. |
-
-## Method Reference
-
-### `AuthService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `register_user(user_data)` | `User` | Reject duplicate email addresses, hash the password, and create a user. |
-| `authenticate_user(login_data)` | `str` | Verify email, password, and active account status, then return an access token. |
-
-### `UserService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_user(user_id)` | `User` | Return a user or raise `ValueError` when it does not exist. |
-| `get_all_users()` | `list[User]` | Return all users. |
-| `update_user(user_id, user_data)` | `User` | Update the supplied name or email after duplicate checks. |
-| `change_password(user_id, password_data)` | `User` | Verify the current password, hash the new password, and update the user. |
-| `approve_or_reject_user(user_id, approver_id, approval_data)` | `User` | Set account status, rejection reason, approver, and approval time. |
-| `delete_user(user_id)` | `None` | Find and delete a user. |
-
-### `ProjectService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `create_project(owner_id, project_data)` | `Project` | Construct and persist a project owned by the supplied user. |
-| `get_project(project_id)` | `Project` | Return a project or raise `ValueError` when it does not exist. |
-| `get_user_projects(owner_id)` | `list[Project]` | Return projects owned by a user. |
-| `get_all_projects()` | `list[Project]` | Return all projects. |
-| `get_user_accessible_projects(user_id)` | `list[Project]` | Return projects the user owns or is a member of. |
-| `update_project(project_id, project_data)` | `Project` | Update supplied project fields. |
-| `delete_project(project_id)` | `None` | Find and delete a project. |
-
-### `ProjectMemberService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_member(project_id, user_id)` | `ProjectMember` | Return a membership or raise `ValueError` when it does not exist. |
-| `get_project_members(project_id)` | `list[ProjectMember]` | Return all members in a project. |
-| `get_user_projects(user_id)` | `list[ProjectMember]` | Return all project memberships for a user. |
-| `add_member(project_id, member_data)` | `ProjectMember` | Reject duplicate membership and add a user to a project. |
-| `update_member(project_id, user_id, member_data)` | `ProjectMember` | Update a member's role. |
-| `remove_member(project_id, user_id)` | `None` | Find and remove a project membership. |
-
-### `TaskService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_task(task_id)` | `Task` | Return a task or raise `ValueError` when it does not exist. |
-| `get_project_tasks(project_id)` | `list[Task]` | Return tasks belonging to a project. |
-| `get_assigned_tasks(user_id)` | `list[Task]` | Return tasks assigned to a user. |
-| `create_task(project_id, created_by_id, task_data)` | `Task` | Construct and persist a task. |
-| `update_task(task_id, task_data)` | `Task` | Update supplied task fields. |
-| `delete_task(task_id)` | `None` | Find and delete a task. |
-
-### `CommentService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_comment(comment_id)` | `Comment` | Return a comment or raise `ValueError` when it does not exist. |
-| `get_task_comments(task_id)` | `list[Comment]` | Return comments belonging to a task. |
-| `create_comment(task_id, author_id, comment_data)` | `Comment` | Construct and persist a comment. |
-| `update_comment(comment_id, comment_data)` | `Comment` | Update a comment body. |
-| `delete_comment(comment_id)` | `None` | Find and delete a comment. |
-
-### `AttachmentService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_attachment(attachment_id)` | `Attachment` | Return an attachment or raise `ValueError` when it does not exist. |
-| `get_project_attachments(project_id)` | `list[Attachment]` | Return attachments associated with a project. |
-| `get_task_attachments(task_id)` | `list[Attachment]` | Return attachments associated with a task. |
-| `get_comment_attachments(comment_id)` | `list[Attachment]` | Return attachments associated with a comment. |
-| `create_attachment(attachment)` | `Attachment` | Persist an attachment. |
-| `delete_attachment(attachment_id)` | `None` | Find and delete an attachment. |
-
-### `TaskAttachmentService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_task_attachment(task_id, attachment_id)` | `TaskAttachment` | Return a task-attachment link or raise `ValueError`. |
-| `get_task_attachments(task_id)` | `list[TaskAttachment]` | Return links for a task. |
-| `add_attachment(task_id, attachment_data)` | `TaskAttachment` | Reject duplicate links and create a task-attachment link. |
-| `remove_attachment(task_id, attachment_id)` | `None` | Find and remove a task-attachment link. |
-
-### `NotificationService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_notification(notification_id)` | `Notification` | Return a notification or raise `ValueError` when it does not exist. |
-| `get_user_notifications(user_id)` | `list[Notification]` | Return notifications addressed to a user. |
-| `get_unread_notifications(user_id)` | `list[Notification]` | Return unread notifications for a user. |
-| `mark_as_read(notification_id)` | `Notification` | Set `read_at` to the current UTC time. |
-| `delete_notification(notification_id)` | `None` | Find and delete a notification. |
-
-### `ActivityService`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_activity(activity_id)` | `Activity` | Return an activity or raise `ValueError` when it does not exist. |
-| `get_project_activity(project_id)` | `list[Activity]` | Return activity records for a project. |
-| `create_activity(activity)` | `Activity` | Persist an activity record. |
-
-## Complete Source Code
-
-The following sections preserve the complete current source for every file in `backend/app/services/`.
-
-### `__init__.py`
+## backend/app/services/__init__.py
 
 ```python
 from app.services.activity import ActivityService
@@ -160,7 +31,8 @@ __all__ = [
 ]
 ```
 
-### `activity.py`
+
+## backend/app/services/activity.py
 
 ```python
 from uuid import UUID
@@ -204,21 +76,25 @@ class ActivityService:
         return self.activity_repository.create(activity)
 ```
 
-### `attachment.py`
+
+## backend/app/services/attachment.py
 
 ```python
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.models.attachment import Attachment
 from app.repositories.attachment import AttachmentRepository
+from app.services.file_storage import FileStorageService
 
 
 class AttachmentService:
     def __init__(self, db: Session):
         self.db = db
         self.attachment_repository = AttachmentRepository(db)
+        self.file_storage = FileStorageService()
 
     def get_attachment(
         self,
@@ -263,16 +139,36 @@ class AttachmentService:
     ) -> Attachment:
         return self.attachment_repository.create(attachment)
 
+    def get_file_path(
+        self,
+        attachment_id: UUID,
+    ) -> Path:
+        attachment = self.get_attachment(attachment_id)
+
+        file_path = self.file_storage.get_file_path(
+            attachment.stored_name
+        )
+
+        if not file_path.exists():
+            raise ValueError("Attachment file not found")
+
+        return file_path
+
     def delete_attachment(
         self,
         attachment_id: UUID,
     ) -> None:
         attachment = self.get_attachment(attachment_id)
 
+        self.file_storage.delete_file(
+            attachment.stored_name
+        )
+
         self.attachment_repository.delete(attachment)
 ```
 
-### `auth.py`
+
+## backend/app/services/auth.py
 
 ```python
 from sqlalchemy.orm import Session
@@ -328,7 +224,8 @@ class AuthService:
         return create_access_token(str(user.id))
 ```
 
-### `comment.py`
+
+## backend/app/services/comment.py
 
 ```python
 from uuid import UUID
@@ -338,12 +235,17 @@ from sqlalchemy.orm import Session
 from app.models.comment import Comment
 from app.repositories.comment import CommentRepository
 from app.schemas.comment import CommentCreate, CommentUpdate
-
+from app.models.activity import Activity
+from app.services.activity import ActivityService
+from app.repositories.task import TaskRepository
+from app.services.notification import NotificationService
 
 class CommentService:
     def __init__(self, db: Session):
         self.db = db
         self.comment_repository = CommentRepository(db)
+        self.task_repository = TaskRepository(db)
+        self.activity_service = ActivityService(db)
 
     def get_comment(
         self,
@@ -369,38 +271,170 @@ class CommentService:
     def create_comment(
         self,
         task_id: UUID,
-        author_id: UUID,
+        actor_id: UUID,
         comment_data: CommentCreate,
     ) -> Comment:
         comment = Comment(
             task_id=task_id,
-            author_id=author_id,
+            author_id=actor_id,
             body=comment_data.body,
         )
 
-        return self.comment_repository.create(comment)
+        comment = self.comment_repository.create(comment)
+        
+        task = self.task_repository.get_by_id(comment.task_id)
+
+        if not task:
+            raise ValueError("Task not found")
+        
+        activity = Activity(
+            project_id=task.project_id,
+            actor_id=actor_id,
+            action="comment_created",
+            entity_type="comment",
+            entity_id=comment.id,
+            extra_data={
+                "task_id": str(comment.task_id),
+            },
+        )
+        
+        
+
+        self.activity_service.create_activity(activity)
+        
+        notification_recipients = set()
+
+        # Notify task creator
+        if task.created_by_id != actor_id:
+            notification_recipients.add(
+                task.created_by_id
+            )
+
+        # Notify task assignee
+        if (
+            task.assignee_id is not None
+            and task.assignee_id != actor_id
+        ):
+            notification_recipients.add(
+                task.assignee_id
+            )
+
+        # Create notifications
+        for recipient_id in notification_recipients:
+
+            self.notification_service.create_notification(
+                recipient_id=recipient_id,
+                notification_type="comment_created",
+                message=f"New comment on task: {task.title}",
+                entity_type="comment",
+                entity_id=comment.id,
+            )
+
+        return comment
+        
+        
 
     def update_comment(
         self,
         comment_id: UUID,
         comment_data: CommentUpdate,
+        actor_id:UUID
     ) -> Comment:
         comment = self.get_comment(comment_id)
 
         comment.body = comment_data.body
 
-        return self.comment_repository.update(comment)
+        comment =self.comment_repository.update(comment)
+        
+        task = self.task_repository.get_by_id(comment.task_id)
+
+        if not task:
+            raise ValueError("Task not found")
+
+        activity = Activity(
+            project_id=task.project_id,
+            actor_id=actor_id,
+            action="comment_updated",
+            entity_type="comment",
+            entity_id=comment.id,
+            extra_data={
+                "task_id": str(comment.task_id),
+            },
+        )
+
+        self.activity_service.create_activity(activity)
+
+        return comment    
 
     def delete_comment(
         self,
         comment_id: UUID,
+        actor_id: UUID,
     ) -> None:
+
         comment = self.get_comment(comment_id)
 
+        task = self.task_repository.get_by_id(comment.task_id)
+
+        if not task:
+            raise ValueError("Task not found")
+
+        project_id = task.project_id
+        task_id = comment.task_id
+
         self.comment_repository.delete(comment)
+
+        activity = Activity(
+            project_id=project_id,
+            actor_id=actor_id,
+            action="comment_deleted",
+            entity_type="comment",
+            entity_id=comment_id,
+            extra_data={
+                "task_id": str(task_id),
+            },
+        )
+
+        self.activity_service.create_activity(activity)
 ```
 
-### `notification.py`
+
+## backend/app/services/file_storage.py
+
+```python
+from pathlib import Path
+
+from fastapi import UploadFile
+
+from app.core.config import settings
+
+
+class FileStorageService:
+    def __init__(self):
+        self.upload_dir = Path(settings.UPLOAD_DIR)
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
+
+    def save_file(self, file: UploadFile, stored_name: str) -> Path:
+        file_path = self.upload_dir / stored_name
+
+        with file_path.open("wb") as buffer:
+            while chunk := file.file.read(1024 * 1024):
+                buffer.write(chunk)
+
+        return file_path
+
+    def get_file_path(self, stored_name: str) -> Path:
+        return self.upload_dir / stored_name
+
+    def delete_file(self, stored_name: str) -> None:
+        file_path = self.get_file_path(stored_name)
+
+        if file_path.exists():
+            file_path.unlink()
+```
+
+
+## backend/app/services/notification.py
 
 ```python
 from datetime import datetime, timezone
@@ -463,9 +497,28 @@ class NotificationService:
         notification = self.get_notification(notification_id)
 
         self.notification_repository.delete(notification)
+        
+    def create_notification(
+        self,
+        recipient_id: UUID,
+        notification_type: str,
+        message: str,
+        entity_type: str,
+        entity_id: UUID,
+    ) -> Notification:
+        notification = Notification(
+            recipient_id=recipient_id,
+            type=notification_type,
+            message=message,
+            entity_type=entity_type,
+            entity_id=entity_id,
+        )
+
+        return self.notification_repository.create(notification)
 ```
 
-### `project.py`
+
+## backend/app/services/project.py
 
 ```python
 from uuid import UUID
@@ -473,7 +526,11 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
+from app.models.project_member import ProjectMember
+from app.models.activity import Activity
+from app.services.activity import ActivityService
 from app.repositories.project import ProjectRepository
+from app.repositories.project_member import ProjectMemberRepository
 from app.schemas.project import ProjectCreate, ProjectUpdate
 
 
@@ -481,6 +538,8 @@ class ProjectService:
     def __init__(self, db: Session):
         self.db = db
         self.project_repository = ProjectRepository(db)
+        self.project_member_repository = ProjectMemberRepository(db)
+        self.activity_Service = ActivityService(db)
 
     def create_project(
         self,
@@ -492,8 +551,32 @@ class ProjectService:
             name=project_data.name,
             description=project_data.description,
         )
+        
+        project = self.project_repository.create(project)
+        
+        manager_member = ProjectMember(
+            project_id = project.id,
+            user_id=owner_id,
+            role="manager",
+        )
 
-        return self.project_repository.create(project)
+        self.project_member_repository.create(manager_member)
+        
+        activity = Activity(
+            project_id=project.id,
+            actor_id=owner_id,
+            action="project_created",
+            entity_type="project",
+            entity_id=project.id,
+            extra_data={
+                "project_name": project.name,
+            },
+        )
+
+        self.activity_Service.create_activity(activity)
+        
+        return project
+    
 
     def get_project(
         self,
@@ -528,8 +611,8 @@ class ProjectService:
         if project_data.description is not None:
             project.description = project_data.description
 
-        if project_data.status is not None:
-            project.status = project_data.status
+        if project_data.is_archived is not None:
+            project.is_archived = project_data.is_archived
 
         return self.project_repository.update(project)
 
@@ -545,7 +628,8 @@ class ProjectService:
         return self.project_repository.get_by_member_or_owner(user_id)
 ```
 
-### `project_member.py`
+
+## backend/app/services/project_member.py
 
 ```python
 from uuid import UUID
@@ -558,13 +642,22 @@ from app.schemas.project_member import (
     ProjectMemberCreate,
     ProjectMemberUpdate,
 )
+from app.repositories.project import ProjectRepository
+from app.repositories.user import UserRepository
+from app.models.activity import Activity
+from app.services.activity import ActivityService
+from app.services.notification import NotificationService
 
 
 class ProjectMemberService:
     def __init__(self, db: Session):
         self.db = db
         self.project_member_repository = ProjectMemberRepository(db)
-
+        self.activity_service = ActivityService(db)
+        self.user_repository = UserRepository(db)
+        self.project_repository = ProjectRepository(db)
+        self.notification_service = NotificationService(db)
+    
     def get_member(
         self,
         project_id: UUID,
@@ -600,7 +693,26 @@ class ProjectMemberService:
         self,
         project_id: UUID,
         member_data: ProjectMemberCreate,
+        actor_id: UUID,
     ) -> ProjectMember:
+        project = self.project_repository.get_by_id(project_id)
+        
+        if not project:
+            raise ValueError("Project not found")
+        
+        user = self.user_repository.get_by_id(
+            member_data.user_id
+        )
+
+        if not user:
+            raise ValueError("User not found")
+
+        if user.account_status != "active":
+            raise ValueError(
+                "User account is not active"
+            )    
+        
+        
         existing_member = self.project_member_repository.get(
             project_id,
             member_data.user_id,
@@ -615,37 +727,130 @@ class ProjectMemberService:
             role=member_data.role,
         )
 
-        return self.project_member_repository.create(member)
+        member = self.project_member_repository.create(member)
 
+        activity = Activity(
+            project_id=project_id,
+            actor_id=actor_id,
+            action="member_added",
+            entity_type="project_member",
+            entity_id=member.user_id,
+            extra_data={
+                "user_id": str(member.user_id),
+                "role": member.role,
+            },
+        )
+
+        self.activity_service.create_activity(activity)
+        
+        self.notification_service.create_notification(
+            recipient_id=member.user_id,
+            notification_type="member_added",
+            message=f"You were added to project {project.name}",
+            entity_type="project",
+            entity_id=project_id,
+        )
+
+        return member
+    
+    
     def update_member(
         self,
         project_id: UUID,
         user_id: UUID,
         member_data: ProjectMemberUpdate,
+        actor_id: UUID,
     ) -> ProjectMember:
+        project = self.project_repository.get_by_id(project_id)
+
+        if not project:
+            raise ValueError("Project not found")
+        
         member = self.get_member(
             project_id,
             user_id,
         )
 
+        old_role = member.role
+
         member.role = member_data.role
 
-        return self.project_member_repository.update(member)
+        member = self.project_member_repository.update(member)
+
+        activity = Activity(
+            project_id=project_id,
+            actor_id=actor_id,
+            action="member_role_updated",
+            entity_type="project_member",
+            entity_id=member.user_id,
+            extra_data={
+                "user_id": str(member.user_id),
+                "old_role": old_role,
+                "new_role": member.role,
+            },
+        )
+        
+
+        self.activity_service.create_activity(activity)
+        
+        
+        self.notification_service.create_notification(
+            recipient_id=member.user_id,
+            notification_type="member_role_updated",
+            message=f"Your role in project {project.name} was changed from {old_role} to {member.role}",
+            entity_type="project",
+            entity_id=project_id,
+        )
+
+        return member
+
 
     def remove_member(
         self,
         project_id: UUID,
         user_id: UUID,
+        actor_id: UUID,
     ) -> None:
+        project = self.project_repository.get_by_id(project_id)
+
+        if not project:
+            raise ValueError("Project not found")
+        
         member = self.get_member(
             project_id,
             user_id,
         )
 
+        removed_role = member.role
+        removed_user_id = member.user_id
+
         self.project_member_repository.delete(member)
+
+        activity = Activity(
+            project_id=project_id,
+            actor_id=actor_id,
+            action="member_removed",
+            entity_type="project_member",
+            entity_id=user_id,
+            extra_data={
+                "user_id": str(removed_user_id),
+                "role": removed_role,
+            },
+        )
+
+        self.activity_service.create_activity(activity)
+        
+        self.notification_service.create_notification(
+            recipient_id=removed_user_id,
+            notification_type="member_removed",
+            message=f"You were removed from project {project.name}",
+            entity_type="project",
+            entity_id=project_id,
+        )
 ```
 
-### `task.py`
+
+## backend/app/services/task.py
 
 ```python
 from uuid import UUID
@@ -654,14 +859,21 @@ from sqlalchemy.orm import Session
 
 from app.models.task import Task
 from app.repositories.task import TaskRepository
+from app.repositories.project_member import ProjectMemberRepository
 from app.schemas.task import TaskCreate, TaskUpdate
+from app.models.activity import Activity
+from app.services.activity import ActivityService
+from app.services.notification import NotificationService
 
 
 class TaskService:
     def __init__(self, db: Session):
         self.db = db
         self.task_repository = TaskRepository(db)
-
+        self.project_member_repository = ProjectMemberRepository(db)
+        self.activity_service = ActivityService(db)
+        self.notification_service = NotificationService(db)
+    
     def get_task(
         self,
         task_id: UUID,
@@ -692,12 +904,25 @@ class TaskService:
     def create_task(
         self,
         project_id: UUID,
-        created_by_id: UUID,
         task_data: TaskCreate,
+        actor_id:UUID,
     ) -> Task:
+        
+        if task_data.assignee_id is not None:
+            member = self.project_member_repository.get(
+                project_id=project_id,
+                user_id=task_data.assignee_id,
+            )
+
+            if not member:
+                raise ValueError(
+                    "Assignee must be a member of this project"
+                )
+        
+        
         task = Task(
             project_id=project_id,
-            created_by_id=created_by_id,
+            created_by_id=actor_id,
             title=task_data.title,
             description=task_data.description,
             assignee_id=task_data.assignee_id,
@@ -705,12 +930,40 @@ class TaskService:
             due_date=task_data.due_date,
         )
 
-        return self.task_repository.create(task)
+        task = self.task_repository.create(task)
+        
+        activity = Activity(
+            project_id=project_id,
+            actor_id=actor_id,
+            action="task_created",
+            entity_type="task",
+            entity_id=task.id,
+            extra_data={
+                "title": task.title,
+            },
+        )
+        
+        self.activity_service.create_activity(activity)
+        
+        if task.assignee_id is not None:
+
+            self.notification_service.create_notification(
+                recipient_id=task.assignee_id,
+                notification_type="task_created",
+                message=f"You were assigned a new task: {task.title}",
+                entity_type="task",
+                entity_id=task.id,
+            )
+        
+        return task
+    
+    
 
     def update_task(
         self,
         task_id: UUID,
         task_data: TaskUpdate,
+        actor_id:UUID
     ) -> Task:
         task = self.get_task(task_id)
 
@@ -721,6 +974,16 @@ class TaskService:
             task.description = task_data.description
 
         if task_data.assignee_id is not None:
+            member = self.project_member_repository.get(
+                project_id=task.project_id,
+                user_id=task_data.assignee_id,
+            )
+
+            if not member:
+                raise ValueError(
+                    "Assignee must be a member of this project"
+                )
+
             task.assignee_id = task_data.assignee_id
 
         if task_data.priority is not None:
@@ -732,18 +995,65 @@ class TaskService:
         if task_data.due_date is not None:
             task.due_date = task_data.due_date
 
-        return self.task_repository.update(task)
+        task = self.task_repository.update(task)
+        
+        activity = Activity(
+            project_id=task.project_id,
+            actor_id=actor_id,
+            action="task_updated",
+            entity_type="task",
+            entity_id=task.id,
+            extra_data={
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+            },
+        )
+
+        self.activity_service.create_activity(activity)
+        
+        if task.assignee_id is not None:
+
+            self.notification_service.create_notification(
+                recipient_id=task.assignee_id,
+                notification_type="task_updated",
+                message=f"Your assigned task was updated: {task.title}",
+                entity_type="task",
+                entity_id=task.id,
+            )
+
+        return task
+
+        
 
     def delete_task(
         self,
         task_id: UUID,
+        actor_id: UUID,
     ) -> None:
         task = self.get_task(task_id)
+        
+        project_id = task.project_id
+        task_title = task.title
 
         self.task_repository.delete(task)
+        
+        activity = Activity(
+            project_id=project_id,
+            actor_id=actor_id,
+            action="task_deleted",
+            entity_type="task",
+            entity_id=task_id,
+            extra_data={
+                "title": task_title,
+            },
+        )
+
+        self.activity_service.create_activity(activity)
 ```
 
-### `task_attachment.py`
+
+## backend/app/services/task_attachment.py
 
 ```python
 from uuid import UUID
@@ -820,7 +1130,8 @@ class TaskAttachmentService:
         self.task_attachment_repository.delete(task_attachment)
 ```
 
-### `user.py`
+
+## backend/app/services/user.py
 
 ```python
 from uuid import UUID
@@ -920,4 +1231,7 @@ class UserService:
         user = self.get_user(user_id)
 
         self.user_repository.delete(user)
+        
 ```
+
+

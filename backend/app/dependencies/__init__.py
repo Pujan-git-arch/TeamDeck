@@ -14,6 +14,7 @@ from app.dependencies.project import (
 from app.dependencies.task import (
     require_task_access,
     require_task_creator,
+    require_task_creator_for_project,
 )
 
 from app.dependencies.comment import (
@@ -34,4 +35,5 @@ __all__ = [
     "require_task_creator",
     "require_comment_access",
     "require_comment_author",
+    "require_task_creator_for_project",
 ]

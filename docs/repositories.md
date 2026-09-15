@@ -1,132 +1,8 @@
-# Repository Layer
+﻿# repositories
 
-This document describes the SQLAlchemy repository classes in `backend/app/repositories/`. The repositories encapsulate database queries and persistence operations for the model layer. They receive an active SQLAlchemy `Session`; transaction commit and rollback remain the responsibility of the service or request boundary.
+Complete source catalog for backend/app/repositories.
 
-## Conventions
-
-- Each repository is initialized with a SQLAlchemy `Session`.
-- Read methods build `select(...)` statements and execute them through `Session.scalar()` or `Session.scalars()`.
-- Collection methods return concrete lists rather than SQLAlchemy result objects.
-- Create methods add an entity, flush the session, refresh the entity, and return it, except `TaskAttachmentRepository.create`, which returns the association after flushing without a refresh.
-- Update methods flush and refresh the supplied entity before returning it.
-- Delete methods call `Session.delete()` followed by `flush()` and return `None`.
-- Repository methods do not commit transactions. This allows callers to group multiple operations in one transaction.
-
-## Repository Overview
-
-| Repository | Model | Main responsibilities |
-| --- | --- | --- |
-| `UserRepository` | `User` | Find users by ID or email, list users, and perform CRUD operations. |
-| `ProjectRepository` | `Project` | Find projects by ID or owner, list projects, and perform CRUD operations. |
-| `ProjectMemberRepository` | `ProjectMember` | Find a membership, list project members or a user’s projects, and perform CRUD operations. |
-| `TaskRepository` | `Task` | Find tasks by ID, project, or assignee, and perform CRUD operations. |
-| `CommentRepository` | `Comment` | Find comments by ID or task, and perform CRUD operations. |
-| `AttachmentRepository` | `Attachment` | Find attachments by ID or owning entity, create attachments, and delete them. |
-| `TaskAttachmentRepository` | `TaskAttachment` | Find task-attachment links, list links for a task, create links, and delete them. |
-| `NotificationRepository` | `Notification` | Find notifications by ID or recipient, list unread notifications, and perform CRUD operations. |
-| `ActivityRepository` | `Activity` | Find activities by ID or project and create activity records. |
-
-## Method Reference
-
-### `UserRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(user_id)` | `User | None` | Find one user by primary key. |
-| `get_by_email(email)` | `User | None` | Find one user by email address. |
-| `get_all()` | `list[User]` | Return all users. |
-| `create(user)` | `User` | Persist and refresh a new user. |
-| `update(user)` | `User` | Flush and refresh an existing user. |
-| `delete(user)` | `None` | Mark a user for deletion and flush. |
-
-### `ProjectRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(project_id)` | `Project | None` | Find one project by primary key. |
-| `get_by_owner(owner_id)` | `list[Project]` | Return projects owned by a user. |
-| `get_all()` | `list[Project]` | Return all projects. |
-| `get_by_member_or_owner(user_id)` | `list[Project]` | Return projects owned by the user or containing the user as a member. |
-| `create(project)` | `Project` | Persist and refresh a new project. |
-| `update(project)` | `Project` | Flush and refresh an existing project. |
-| `delete(project)` | `None` | Mark a project for deletion and flush. |
-
-### `ProjectMemberRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get(project_id, user_id)` | `ProjectMember | None` | Find a membership by its composite key. |
-| `get_project_members(project_id)` | `list[ProjectMember]` | Return all members of a project. |
-| `get_user_projects(user_id)` | `list[ProjectMember]` | Return all project memberships for a user. |
-| `create(member)` | `ProjectMember` | Persist and refresh a membership. |
-| `update(member)` | `ProjectMember` | Flush and refresh an existing membership. |
-| `delete(member)` | `None` | Mark a membership for deletion and flush. |
-
-### `TaskRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(task_id)` | `Task | None` | Find one task by primary key. |
-| `get_project_tasks(project_id)` | `list[Task]` | Return tasks belonging to a project. |
-| `get_assigned_tasks(user_id)` | `list[Task]` | Return tasks assigned to a user. |
-| `create(task)` | `Task` | Persist and refresh a new task. |
-| `update(task)` | `Task` | Flush and refresh an existing task. |
-| `delete(task)` | `None` | Mark a task for deletion and flush. |
-
-### `CommentRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(comment_id)` | `Comment | None` | Find one comment by primary key. |
-| `get_task_comments(task_id)` | `list[Comment]` | Return comments belonging to a task. |
-| `create(comment)` | `Comment` | Persist and refresh a new comment. |
-| `update(comment)` | `Comment` | Flush and refresh an existing comment. |
-| `delete(comment)` | `None` | Mark a comment for deletion and flush. |
-
-### `AttachmentRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(attachment_id)` | `Attachment | None` | Find one attachment by primary key. |
-| `get_project_attachments(project_id)` | `list[Attachment]` | Return attachments associated with a project. |
-| `get_task_attachments(task_id)` | `list[Attachment]` | Return attachments associated with a task. |
-| `get_comment_attachments(comment_id)` | `list[Attachment]` | Return attachments associated with a comment. |
-| `create(attachment)` | `Attachment` | Persist and refresh a new attachment. |
-| `delete(attachment)` | `None` | Mark an attachment for deletion and flush. |
-
-### `TaskAttachmentRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get(task_id, attachment_id)` | `TaskAttachment | None` | Find one association by its composite key. |
-| `get_task_attachments(task_id)` | `list[TaskAttachment]` | Return attachment links for a task. |
-| `create(task_attachment)` | `TaskAttachment` | Persist a task-attachment association. |
-| `delete(task_attachment)` | `None` | Mark an association for deletion and flush. |
-
-### `NotificationRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(notification_id)` | `Notification | None` | Find one notification by primary key. |
-| `get_user_notifications(user_id)` | `list[Notification]` | Return notifications addressed to a user. |
-| `get_unread(user_id)` | `list[Notification]` | Return notifications with no `read_at` value. |
-| `create(notification)` | `Notification` | Persist and refresh a new notification. |
-| `update(notification)` | `Notification` | Flush and refresh an existing notification. |
-| `delete(notification)` | `None` | Mark a notification for deletion and flush. |
-
-### `ActivityRepository`
-
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `get_by_id(activity_id)` | `Activity | None` | Find one activity by primary key. |
-| `get_project_activity(project_id)` | `list[Activity]` | Return activity records for a project. |
-| `create(activity)` | `Activity` | Persist and refresh a new activity. |
-
-## Complete Source Code
-
-The following sections preserve the complete current source for every file in `backend/app/repositories/`.
-
-### `__init__.py`
+## backend/app/repositories/__init__.py
 
 ```python
 from app.repositories.activity import ActivityRepository
@@ -153,7 +29,8 @@ __all__ = [
 ]
 ```
 
-### `activity.py`
+
+## backend/app/repositories/activity.py
 
 ```python
 from uuid import UUID
@@ -184,7 +61,7 @@ class ActivityRepository:
     ) -> list[Activity]:
         statement = select(Activity).where(
             Activity.project_id == project_id
-        )
+        ).order_by(Activity.created_at.desc())
 
         return list(self.db.scalars(statement).all())
 
@@ -198,7 +75,8 @@ class ActivityRepository:
         return activity
 ```
 
-### `attachment.py`
+
+## backend/app/repositories/attachment.py
 
 ```python
 from uuid import UUID
@@ -261,7 +139,8 @@ class AttachmentRepository:
         self.db.flush()
 ```
 
-### `comment.py`
+
+## backend/app/repositories/comment.py
 
 ```python
 from uuid import UUID
@@ -286,7 +165,7 @@ class CommentRepository:
     def get_task_comments(self, task_id: UUID) -> list[Comment]:
         statement = select(Comment).where(
             Comment.task_id == task_id
-        )
+        ).order_by(Comment.created_at.asc())
 
         return list(self.db.scalars(statement).all())
 
@@ -306,7 +185,8 @@ class CommentRepository:
         self.db.flush()
 ```
 
-### `notification.py`
+
+## backend/app/repositories/notification.py
 
 ```python
 from uuid import UUID
@@ -337,6 +217,8 @@ class NotificationRepository:
     ) -> list[Notification]:
         statement = select(Notification).where(
             Notification.recipient_id == user_id
+        ).order_by(
+            Notification.created_at.desc()
         )
 
         return list(self.db.scalars(statement).all())
@@ -348,6 +230,8 @@ class NotificationRepository:
         statement = select(Notification).where(
             Notification.recipient_id == user_id,
             Notification.read_at.is_(None),
+        ).order_by(
+            Notification.created_at.desc()
         )
 
         return list(self.db.scalars(statement).all())
@@ -377,15 +261,17 @@ class NotificationRepository:
         self.db.flush()
 ```
 
-### `project.py`
+
+## backend/app/repositories/project.py
 
 ```python
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 
 
 class ProjectRepository:
@@ -437,7 +323,8 @@ class ProjectRepository:
         return list(self.db.scalars(statement).all())
 ```
 
-### `project_member.py`
+
+## backend/app/repositories/project_member.py
 
 ```python
 from uuid import UUID
@@ -500,7 +387,8 @@ class ProjectMemberRepository:
         self.db.flush()
 ```
 
-### `task.py`
+
+## backend/app/repositories/task.py
 
 ```python
 from uuid import UUID
@@ -549,7 +437,8 @@ class TaskRepository:
         self.db.flush()
 ```
 
-### `task_attachment.py`
+
+## backend/app/repositories/task_attachment.py
 
 ```python
 from uuid import UUID
@@ -602,7 +491,8 @@ class TaskAttachmentRepository:
         self.db.flush()
 ```
 
-### `user.py`
+
+## backend/app/repositories/user.py
 
 ```python
 from uuid import UUID
@@ -648,4 +538,7 @@ class UserRepository:
         self.db.delete(user)
         self.db.flush()
         
+    
 ```
+
+

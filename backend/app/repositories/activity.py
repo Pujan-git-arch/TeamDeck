@@ -26,7 +26,7 @@ class ActivityRepository:
     ) -> list[Activity]:
         statement = select(Activity).where(
             Activity.project_id == project_id
-        )
+        ).order_by(Activity.created_at.desc())
 
         return list(self.db.scalars(statement).all())
 

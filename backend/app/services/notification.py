@@ -58,3 +58,21 @@ class NotificationService:
         notification = self.get_notification(notification_id)
 
         self.notification_repository.delete(notification)
+        
+    def create_notification(
+        self,
+        recipient_id: UUID,
+        notification_type: str,
+        message: str,
+        entity_type: str,
+        entity_id: UUID,
+    ) -> Notification:
+        notification = Notification(
+            recipient_id=recipient_id,
+            type=notification_type,
+            message=message,
+            entity_type=entity_type,
+            entity_id=entity_id,
+        )
+
+        return self.notification_repository.create(notification)
