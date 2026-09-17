@@ -170,9 +170,14 @@ def delete_user(
     try:
         service.delete_user(
             user_id,
+            current_user,
         )
 
         db.commit()
+        
+        return {
+            "message": "User deleted succesfully"
+        }
 
     except ValueError as error:
         db.rollback()

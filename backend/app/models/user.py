@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, text
+from sqlalchemy import DateTime, ForeignKey, String, Boolean, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -47,6 +47,13 @@ class User(Base):
         nullable=False,
         default="viewer",
         index=True,
+    )
+    
+    is_primary_super_admin: Mapped[bool] = mapped_column(
+    Boolean,
+    nullable=False,
+    default=False,
+    server_default=text("false"),
     )
 
     account_status: Mapped[str] = mapped_column(

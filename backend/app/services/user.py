@@ -51,6 +51,7 @@ class UserService:
             
         if user_data.role is not None:
             allowed_roles ={
+                "super_admin",
                 "admin",
                 "manager",
                 "developer",
@@ -63,13 +64,24 @@ class UserService:
             if user_data.role not in allowed_roles:
                 raise ValueError("Invalid user role")
             
-            if user.role == "super_admin":
-                raise ValueError("Super admin role cannot be changed")
+            # The Primary Super Administrator cannot have its role changed.
+            if user.is_primary_super_admin:
+                raise ValueError(
+                    "The primary super administrator role cannot be changed"
+                )
             
-            if user_data.role == "super_admin":
-                if current_user.role != "super_admin":
+            # Only the Primary Super Administrator can manage another
+            # Super Administrator.    
+            
+            if user.role == "super_admin" and not current_user.is_primary_super_admin:
+                raise ValueError("Only the primary Super administrator can change another super admin")
+            
+             # Only the Primary Super Administrator can assign
+            # the Super Administrator role.
+        
+            if (user_data.role == "super_admin" and not current_user.is_primary_super_admin):
                     raise ValueError(
-                        "Only super admin can assign the super admin role"
+                        "Only the primary super administrator can assign the super admin role"
                     )
             user.role = user_data.role
 
@@ -117,8 +129,24 @@ class UserService:
 
         return self.user_repository.update(user)
 
-    def delete_user(self, user_id: UUID):
+    def delete_user(self, user_id: UUID, current_user: User):
         user = self.get_user(user_id)
+        
+        # Primary Super Administrator can never be deleted.
+        if user.is_primary_super_admin:
+            raise ValueError(
+                "The primary super administrator cannot be deleted"
+            )
+
+        # Only the Primary Super Administrator can delete
+        # another Super Administrator.
+        if user.role == "super_admin":
+            if not current_user.is_primary_super_admin:
+                raise ValueError(
+                    "Only the primary super administrator can delete another super admin"
+                )
+
+            
 
         self.user_repository.delete(user)
         

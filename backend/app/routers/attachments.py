@@ -164,7 +164,7 @@ def get_comment_attachments(
 def upload_attachment(
     file: UploadFile = File(...),
     kind: str = Form(...),
-    project_id: UUID | None = Form(None),
+    project_id: UUID | None = Form(...),
     task_id: UUID | None = Form(None),
     comment_id: UUID | None = Form(None),
     db: Session = Depends(get_db),

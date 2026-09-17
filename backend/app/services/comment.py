@@ -16,6 +16,7 @@ class CommentService:
         self.comment_repository = CommentRepository(db)
         self.task_repository = TaskRepository(db)
         self.activity_service = ActivityService(db)
+        self.notification_service = NotificationService(db)
 
     def get_comment(
         self,

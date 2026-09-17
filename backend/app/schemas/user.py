@@ -94,6 +94,7 @@ class UserResponse(BaseModel):
     name: str
     email: EmailStr
     role: str
+    is_primary_super_admin: bool
     account_status: str
     rejection_reason: str | None = None
     avatar_attachment_id: UUID | None = None
