@@ -17,8 +17,18 @@ from app.routers.task_attachments import (
 )
 from app.routers.attachments import router as attachments_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="TeamDeck API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Auth + users
